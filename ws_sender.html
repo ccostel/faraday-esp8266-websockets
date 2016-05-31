@@ -1,0 +1,106 @@
+<html>
+	<h2>Value:</h2>
+	<input type="text" id="textInput">
+	<input id="range" type="range" value="0" min="0" max="255" onchange="updateValue(this.value)">
+	
+	<button onClick="connect()" >Connect</button>
+	<button onClick="start()" >Start Sending</button>
+	<button onClick="stop()" >Stop Sending</button>
+
+	<script>
+	
+
+
+
+
+		var host;	
+	    var socket;
+	    var stamp_sent = 0; 
+	    var stamp_received;
+	    var latency = [];
+	    var i = 0;
+	    var sent = 0;
+	    var received = 0;
+
+		function connect(){
+	    	try{
+				host = "ws://10.10.100.254:81";
+	    		socket = new WebSocket(host);
+
+		        console.log('Socket Status: '+socket.readyState);
+
+		        socket.onopen = function(){
+		       		 console.log('Socket Status: '+socket.readyState+' (open)');
+		        }
+
+		        socket.onmessage = function(msg){
+		       		 console.log('Received: ' + msg.data);
+		       		 stamp_received = new Date().getTime();
+		       		
+		       		 var diff = stamp_received - stamp_sent;
+		       		 // console.log('*********** LATENCY ***********' );
+		       		 // console.log(diff);
+		       		 // console.log('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
+		       		 if (diff > 0) { // threshold
+		       		 	latency.push(diff);
+		       		 };
+		       		 received++;
+		       		 
+		        }
+
+		        socket.onclose = function(){
+		       		 console.log('Socket Status: '+socket.readyState+' (Closed)');
+		        }			
+
+		    } catch(exception){
+		   		 console.log('Error: '+exception);
+		    }
+		}	
+
+		var sendingData; // intervarl process holder.
+		var start = function() {
+			return sendingData = setInterval(send,2);
+		}
+		
+		var stop = function() {
+			clearInterval(sendingData);
+			socket.close();
+			i = 0;
+			var max = Math.max.apply(null, latency); 
+			var min = Math.min.apply(null, latency);
+			console.log("Latency: max = " + max + " min = " + min );
+			console.log("Latency: average = " + averageLatency(latency) );
+			console.log("Sent  = " + sent + " Client received = " + received );
+			sent = 0;
+			received = 0;
+
+		}
+
+
+		function send() {
+			sent++;
+			socket.send(i+ " " + i + " " + i + "");
+
+			stamp_sent = new Date().getTime();
+			if (i == 100000) {
+				stop();
+				console.log("stopped");
+			};
+			i++;
+		}
+
+		function updateValue(val) {
+			document.getElementById('textInput').value=val; 
+		}
+
+		function averageLatency(latency) {
+			var sum = 0;
+			for (var i = latency.length - 1; i >= 0; i--) {
+				sum += parseInt( latency[i]); 
+			};
+			return sum/latency.length;
+		}
+		updateValue(0);
+	</script>
+
+</html>
